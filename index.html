@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault-Tec Logistics Chronometer</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="crt-overlay"></div>
+    <div class="container">
+        <header>
+            <h1>VAULT-TEC LOGISTICS CHRONOMETER</h1>
+            <div id="clock">00:00:00</div>
+        </header>
+
+        <main>
+            <div id="calendar-container">
+                <!-- Calendar will be injected here -->
+            </div>
+
+            <div id="dashboard-container">
+                <div class="widget" id="pay-cycle-progress">
+                    <h3>PAY CYCLE PROGRESS</h3>
+                    <div id="pay-cycle-gauge"></div>
+                </div>
+                <div class="widget" id="earnings-summary">
+                    <h3>EARNINGS SUMMARY</h3>
+                    <div id="earnings-chart"></div>
+                    <div id="financial-breakdown">
+                        <p>GROSS: <span id="gross-pay">£0.00</span></p>
+                        <p>TAX (20%): <span id="tax-deduction">£0.00</span></p>
+                        <p>STUDENT LOAN (9%): <span id="student-loan-deduction">£0.00</span></p>
+                        <p>NET PAY: <span id="net-pay">£0.00</span></p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Data Entry Modal -->
+    <div id="entry-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 id="modal-date-title">DATE</h2>
+            <form id="entry-form">
+                <label for="start-time">START TIME:</label>
+                <input type="time" id="start-time" name="start-time" required>
+
+                <label for="end-time">FINISH TIME:</label>
+                <input type="time" id="end-time" name="end-time" required>
+
+                <button type="submit">SAVE RECORD</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

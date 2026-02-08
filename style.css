@@ -1,0 +1,208 @@
+:root {
+    --primary-color: #18ff62;
+    --background-color: #000;
+    --scanline-color: rgba(24, 255, 98, 0.1);
+    --font-stack: 'VT323', monospace;
+    --container-width: 800px;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--primary-color);
+    font-family: var(--font-stack);
+    margin: 0;
+    padding: 20px;
+    height: 100vh;
+    overflow: hidden;
+    text-shadow: 0 0 5px var(--primary-color);
+}
+
+.crt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.25) 50%
+    ), linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.06),
+        rgba(0, 255, 0, 0.02),
+        rgba(0, 0, 255, 0.06)
+    );
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.15;
+}
+
+.container {
+    max-width: var(--container-width);
+    margin: 0 auto;
+    border: 2px solid var(--primary-color);
+    padding: 20px;
+    height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 0 10px var(--primary-color);
+    background-color: rgba(0, 20, 0, 0.9);
+}
+
+header {
+    text-align: center;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin: 0;
+    letter-spacing: 2px;
+    animation: flicker 2s infinite;
+}
+
+#clock {
+    font-size: 1.5rem;
+    margin-top: 5px;
+}
+
+@keyframes flicker {
+    0% { opacity: 1; }
+    3% { opacity: 0.4; }
+    6% { opacity: 1; }
+    7% { opacity: 0.4; }
+    8% { opacity: 1; }
+    9% { opacity: 1; }
+    10% { opacity: 0.1; }
+    11% { opacity: 1; }
+    100% { opacity: 1; }
+}
+
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.8);
+}
+
+.modal-content {
+    background-color: #051a05;
+    margin: 15% auto;
+    padding: 20px;
+    border: 2px solid var(--primary-color);
+    width: 300px;
+    box-shadow: 0 0 15px var(--primary-color);
+    text-align: center;
+}
+
+.close-modal {
+    color: var(--primary-color);
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    color: #fff;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+input[type="time"] {
+    background-color: #000;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+    font-family: var(--font-stack);
+    font-size: 1.5rem;
+    padding: 5px;
+    margin: 10px 0;
+    width: 80%;
+}
+
+button {
+    background-color: var(--primary-color);
+    color: var(--background-color);
+    font-family: var(--font-stack);
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color: #fff;
+    color: #000;
+    box-shadow: 0 0 10px #fff;
+}
+
+.widget {
+    border: 1px dashed var(--primary-color);
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+/* Calendar Styling */
+#calendar-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.calendar-day {
+    width: 100px;
+    height: 120px;
+    border: 1px solid var(--primary-color);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.calendar-day:hover {
+    background-color: rgba(24, 255, 98, 0.2);
+    transform: scale(1.05);
+}
+
+.calendar-day.today {
+    border: 2px solid #fff;
+    box-shadow: 0 0 10px #fff;
+}
+
+.calendar-day.ghost {
+    opacity: 0.4;
+    border-style: dashed;
+}
+
+.day-date {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.day-hours {
+    font-size: 1rem;
+    text-align: center;
+}
+
+.tick text {
+    font-size: 1rem;
+    fill: var(--primary-color);
+    font-family: 'VT323', monospace;
+}
