@@ -1,0 +1,29 @@
+# --- Environments ---
+venv/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# --- Dependencies ---
+node_modules/
+.pnp
+.pnp.js
+
+# --- Firebase ---
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# --- Build Outputs ---
+dist/
+build/
+out/
+
+# --- Editor / OS ---
+.vscode/
+.DS_Store
+thumbs.db
+*.log
