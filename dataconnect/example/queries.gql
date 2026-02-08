@@ -1,0 +1,39 @@
+mutation CreateUser @auth(level: USER) {
+  user_insert(data: {
+    displayName: "New User",
+    email: "newuser@example.com",
+    createdAt_expr: "request.time",
+    id_expr: "uuidV4()"
+  })
+}
+
+query ListTasksForUser @auth(level: USER) {
+  tasks(where: {userId: {eq_expr: "auth.uid"}}) {
+    id
+    name
+    description
+    dueDate
+    priority
+    status
+  }
+}
+
+mutation LogTime @auth(level: USER) {
+  timeEntry_insert(data: {
+    userId_expr: "auth.uid",
+    taskId: "00000000-0000-0000-0000-000000000000",
+    startTime_expr: "request.time",
+    endTime_expr: "request.time",
+    durationMinutes: 60,
+    createdAt_expr: "request.time"
+  })
+}
+
+query ListProjects @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  projects {
+    id
+    name
+    description
+    dueDate
+  }
+}

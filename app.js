@@ -1,11 +1,10 @@
 // Initialize Firebase (Placeholder)
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "your-project.firebaseapp.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef123456"
+    apiKey: "AIzaSyAFSro1X9OFg12NxGjVUX2PzkzThxRRXU0",
+    authDomain: "dw-timetracker.web.app",
+    projectId: "dw-timetracker",
+    storageBucket: "dw-timetracker.appspot.com",
+    messagingSenderId: "411877112861"
 };
 
 // Mock Firestore Service
@@ -33,8 +32,8 @@ const DataStore = {
 
 // Global State
 let logs = {}; // Object to store work logs keyed by YYYY-MM-DD
-const HOURLY_WAGE = 15.00; // Default
-const TAX_RATE = 0.20;
+const HOURLY_WAGE = 13.06; // Default
+const TAX_RATE = 0.25;
 const STUDENT_LOAN_THRESHOLD_WEEKLY = 27295 / 52;
 const STUDENT_LOAN_RATE = 0.09;
 
