@@ -1,4 +1,17 @@
-// Initialize Firebase (Placeholder)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import {
+    initializeFirestore,
+    persistentLocalCache,
+    collection,
+    doc,
+    setDoc,
+    onSnapshot,
+    query,
+    where,
+    documentId
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// Initialize Firebase (Placeholder - User must replace with their config)
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "your-project.firebaseapp.com",
@@ -8,68 +21,104 @@ const firebaseConfig = {
     appId: "1:123456789:web:abcdef123456"
 };
 
-// Mock Firestore Service
-const DataStore = {
-    collectionName: 'work_logs',
+const app = initializeApp(firebaseConfig);
 
-    // Simulate getting all documents
-    async getLogs() {
-        return new Promise((resolve) => {
-            const data = localStorage.getItem(this.collectionName);
-            resolve(data ? JSON.parse(data) : {});
-        });
-    },
-
-    // Simulate saving a document (merge/overwrite)
-    async saveLog(dateStr, logData) {
-        return new Promise((resolve) => {
-            const currentData = JSON.parse(localStorage.getItem(this.collectionName) || '{}');
-            currentData[dateStr] = logData;
-            localStorage.setItem(this.collectionName, JSON.stringify(currentData));
-            resolve();
-        });
-    }
-};
+// Initialize Firestore with persistent cache for offline support
+const db = initializeFirestore(app, {
+    localCache: persistentLocalCache()
+});
 
 // Global State
 let logs = {}; // Object to store work logs keyed by YYYY-MM-DD
 const HOURLY_WAGE = 15.00; // Default
 const TAX_RATE = 0.20;
-const STUDENT_LOAN_THRESHOLD_WEEKLY = 27295 / 52;
 const STUDENT_LOAN_RATE = 0.09;
+// Monthly threshold approx £2274 based on £27295 annual
+const MONTHLY_THRESHOLD = 27295 / 12;
 
 document.addEventListener('DOMContentLoaded', () => {
     updateClock();
     setInterval(updateClock, 1000);
 
-    // Load Data (Mock)
-    loadData();
+    // Setup Real-time Listener instead of one-time load
+    setupRealtimeListener();
 
-    // Initialize Calendar
+    // Initialize Calendar (will be updated by listener)
     initCalendar();
 
     // Event Listeners for Modal
-    document.querySelector('.close-modal').addEventListener('click', closeModal);
+    const closeModalBtn = document.querySelector('.close-modal');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeModal);
+    }
+
     window.onclick = function(event) {
         if (event.target == document.getElementById('entry-modal')) {
             closeModal();
         }
     }
 
-    document.getElementById('entry-form').addEventListener('submit', handleFormSubmit);
+    const entryForm = document.getElementById('entry-form');
+    if (entryForm) {
+        entryForm.addEventListener('submit', handleFormSubmit);
+    }
 });
+
+function setupRealtimeListener() {
+    const today = new Date();
+    // Start Date: 20th of previous month
+    // Handle year wrap automatically via Date constructor
+    const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 20);
+    // End Date: Today (or future if needed, but requirements say 'to today')
+    // We'll use today to verify the range.
+    const endDate = new Date(today);
+
+    // Formatting for query
+    const startStr = formatDate(startDate);
+    const endStr = formatDate(endDate);
+
+    console.log(`Listening for logs from ${startStr} to ${endStr}`);
+
+    const q = query(
+        collection(db, "work_logs"),
+        where(documentId(), ">=", startStr),
+        where(documentId(), "<=", endStr)
+    );
+
+    onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            const dateStr = change.doc.id;
+            if (change.type === "added" || change.type === "modified") {
+                logs[dateStr] = change.doc.data();
+            }
+            if (change.type === "removed") {
+                delete logs[dateStr];
+            }
+        });
+
+        // Update UI
+        initCalendar();
+        updateDashboard();
+    }, (error) => {
+        console.error("Error getting documents: ", error);
+    });
+}
 
 function updateClock() {
     const now = new Date();
-    document.getElementById('clock').innerText = now.toLocaleTimeString();
+    const clock = document.getElementById('clock');
+    if (clock) {
+        clock.innerText = now.toLocaleTimeString();
+    }
 }
 
 function initCalendar() {
     const container = document.getElementById('calendar-container');
+    if (!container) return;
+
     container.innerHTML = ''; // Clear existing
 
     const today = new Date();
-    // Reset time part to avoid issues
     today.setHours(0, 0, 0, 0);
 
     // Ghost Week: 7 days before today
@@ -101,7 +150,7 @@ function renderDayCard(date, container, isGhost, isToday) {
 
     // Check if log exists
     const log = logs[dateStr];
-    const hours = log ? log.total_hours.toFixed(2) : '--';
+    const hours = log ? parseFloat(log.total_hours).toFixed(2) : '--';
 
     card.innerHTML = `
         <div class="day-date">${dayName} ${dayNum}</div>
@@ -119,29 +168,33 @@ function formatDate(date) {
     return `${year}-${month}-${day}`;
 }
 
-async function loadData() {
-    logs = await DataStore.getLogs();
-    initCalendar();
-    updateDashboard();
-}
-
 function openModal(dateStr) {
-    document.getElementById('entry-modal').style.display = 'block';
-    document.getElementById('modal-date-title').innerText = dateStr;
-    document.getElementById('modal-date-title').dataset.date = dateStr; // Store date in dataset
+    const modal = document.getElementById('entry-modal');
+    const title = document.getElementById('modal-date-title');
+    const startInput = document.getElementById('start-time');
+    const endInput = document.getElementById('end-time');
 
-    // Pre-fill if exists
-    if (logs[dateStr]) {
-        document.getElementById('start-time').value = logs[dateStr].start_time;
-        document.getElementById('end-time').value = logs[dateStr].end_time;
-    } else {
-        document.getElementById('start-time').value = '';
-        document.getElementById('end-time').value = '';
+    if (modal && title && startInput && endInput) {
+        modal.style.display = 'block';
+        title.innerText = dateStr;
+        title.dataset.date = dateStr;
+
+        // Pre-fill if exists
+        if (logs[dateStr]) {
+            startInput.value = logs[dateStr].start_time;
+            endInput.value = logs[dateStr].end_time;
+        } else {
+            startInput.value = '';
+            endInput.value = '';
+        }
     }
 }
 
 function closeModal() {
-    document.getElementById('entry-modal').style.display = 'none';
+    const modal = document.getElementById('entry-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 async function handleFormSubmit(e) {
@@ -158,14 +211,15 @@ async function handleFormSubmit(e) {
             total_hours: totalHours
         };
 
-        // Optimistic update
-        logs[dateStr] = logData;
-
-        await DataStore.saveLog(dateStr, logData);
-
-        initCalendar();
-        updateDashboard();
-        closeModal();
+        // Save to Firestore - Persistence is automatic via persistentLocalCache
+        try {
+            await setDoc(doc(db, "work_logs", dateStr), logData);
+            closeModal();
+            // No need to manually update UI or logs, onSnapshot will handle it
+        } catch (error) {
+            console.error("Error saving log: ", error);
+            alert("Failed to save log. check console.");
+        }
     }
 }
 
@@ -177,45 +231,43 @@ function calculateHours(start, end) {
     const endDate = new Date(0, 0, 0, endH, endM);
 
     let diff = (endDate - startDate) / (1000 * 60 * 60); // Hours
-    if (diff < 0) diff += 24; // Handle overnight shifts if needed (though not explicitly requested, good to have)
+    if (diff < 0) diff += 24; // Handle overnight
 
     return diff;
 }
 
 function updateDashboard() {
-    console.log("Updating Dashboard stats...");
-
     const today = new Date();
     const currentDay = today.getDate();
-    const currentMonth = today.getMonth(); // 0-11
+    const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
     let cycleStartDate;
 
     // Determine Pay Cycle Start Date
     if (currentDay >= 20) {
-        // If today is on or after the 20th, cycle starts on the 20th of this month
         cycleStartDate = new Date(currentYear, currentMonth, 20);
     } else {
-        // If today is before the 20th, cycle starts on the 20th of the previous month
-        // Handle January edge case (month - 1 handles year wrap automatically in Date constructor)
         cycleStartDate = new Date(currentYear, currentMonth - 1, 20);
     }
 
-    // Filter logs within the cycle up to today (inclusive of today)
-    // Note: The prompt says "to the current date". I'll interpret this as including today.
-
     let totalHours = 0;
 
-    // Iterate through all logs
+    // We iterate through available logs to sum hours for the cycle
+    // The logs object contains data from the listener (20th prev month -> today)
+    // This should cover the current cycle range completely.
+
     for (const [dateStr, log] of Object.entries(logs)) {
         const logDate = new Date(dateStr);
-        // Reset time for accurate comparison
         logDate.setHours(0, 0, 0, 0);
-        cycleStartDate.setHours(0, 0, 0, 0);
-        today.setHours(0, 0, 0, 0);
 
-        if (logDate >= cycleStartDate && logDate <= today) {
+        const cycleStart = new Date(cycleStartDate);
+        cycleStart.setHours(0, 0, 0, 0);
+
+        const todayDate = new Date(today);
+        todayDate.setHours(0, 0, 0, 0);
+
+        if (logDate >= cycleStart && logDate <= todayDate) {
             totalHours += parseFloat(log.total_hours);
         }
     }
@@ -223,31 +275,6 @@ function updateDashboard() {
     // Calculations
     const grossPay = totalHours * HOURLY_WAGE;
     const tax = grossPay * TAX_RATE;
-
-    // Student Loan: 9% over weekly threshold * number of weeks?
-    // Or just 9% over the prorated threshold for the period?
-    // The prompt says "Student Loan (9% over threshold)".
-    // Since this is an estimate, I'll use a weekly equivalent logic or annual/52 * weeks.
-    // However, exact calculation depends on pay frequency (monthly usually).
-    // If monthly, threshold is ~£2274.
-    // I'll assume a monthly pay cycle context given the "20th to 20th" structure.
-    // Let's use the Monthly Threshold: £27295 / 12 = ~£2274.58
-    const MONTHLY_THRESHOLD = 27295 / 12;
-
-    // We are estimating for the *current accumulated amount*.
-    // This is tricky. Are we estimating what the deduction *will be* at the end of the month based on *current* hours?
-    // Or calculating the deduction applicable to the *current* amount?
-    // Usually, tax/NI/Student Loan is calculated on the total pay for the period.
-    // If I work 1 hour, I don't pay student loan yet.
-    // So I should compare `grossPay` against the threshold (prorated? No, usually distinct pay period).
-    // If the dashboard shows "Earned so far", it should probably show the deduction *if paid now*.
-    // But since pay is monthly, the threshold applies to the monthly gross.
-    // If I'm only halfway through the month, my gross might be below threshold, but will be above by end.
-    // Showing 0 deduction might be misleading.
-    // However, for "Net Pay: Final estimated take-home", it implies a projection?
-    // The prompt says: "Sum total hours worked... to the current date".
-    // So it's "Year to Date" style but for the month.
-    // I will calculate deductions based on the *current accumulated gross*.
 
     let studentLoan = 0;
     if (grossPay > MONTHLY_THRESHOLD) {
@@ -257,12 +284,7 @@ function updateDashboard() {
     const netPay = grossPay - tax - studentLoan;
 
     // Update DOM
-    // Format currency
     const fmt = (val) => `£${val.toFixed(2)}`;
-
-    // I need to update the IDs in index.html
-    // Note: I don't have an ID for total hours in the summary, maybe I should add it or just rely on the chart.
-    // The prompt asked for specific widgets.
 
     if (document.getElementById('gross-pay'))
         document.getElementById('gross-pay').innerText = fmt(grossPay);
@@ -276,11 +298,13 @@ function updateDashboard() {
     if (document.getElementById('net-pay'))
         document.getElementById('net-pay').innerText = fmt(netPay);
 
-    // Also update charts (Step 5)
-    // Prepare data for chart: Daily hours in the cycle
+    // Update Charts
     const chartData = [];
     let loopDate = new Date(cycleStartDate);
-    while (loopDate <= today) {
+    const todayDate = new Date(today);
+    todayDate.setHours(0,0,0,0);
+
+    while (loopDate <= todayDate) {
         const dStr = formatDate(loopDate);
         const log = logs[dStr];
         chartData.push({
@@ -291,9 +315,7 @@ function updateDashboard() {
         loopDate.setDate(loopDate.getDate() + 1);
     }
 
-    // Calculate Pay Cycle Progress (Days)
-    // Cycle is approx 30 days. Let's say 20th to 19th.
-    // Start: cycleStartDate. End: 19th of next month (relative to cycle start).
+    // Calculate Pay Cycle Progress
     const cycleEndDate = new Date(cycleStartDate);
     cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
     cycleEndDate.setDate(19);
@@ -302,7 +324,9 @@ function updateDashboard() {
     const daysElapsed = (today - cycleStartDate) / (1000 * 60 * 60 * 24) + 1;
     const progress = Math.min(1, Math.max(0, daysElapsed / totalCycleDays));
 
-    updateCharts(chartData, progress);
+    if (typeof d3 !== 'undefined') {
+        updateCharts(chartData, progress);
+    }
 }
 
 function updateCharts(data, progress) {
@@ -312,7 +336,9 @@ function updateCharts(data, progress) {
 
 function drawEarningsChart(data) {
     const container = d3.select("#earnings-chart");
-    container.selectAll("*").remove(); // Clear previous
+    if (container.empty()) return;
+
+    container.selectAll("*").remove();
 
     const width = 350;
     const height = 150;
@@ -334,7 +360,7 @@ function drawEarningsChart(data) {
         .padding(0.2);
 
     const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.hours) || 12]) // Default to 12 if no data
+        .domain([0, d3.max(data, d => d.hours) || 12])
         .range([innerHeight, 0]);
 
     // Bars
@@ -347,12 +373,12 @@ function drawEarningsChart(data) {
         .attr("width", x.bandwidth())
         .attr("height", d => innerHeight - y(d.hours))
         .attr("fill", "#18ff62")
-        .style("shape-rendering", "crispEdges"); // Blocky look
+        .style("shape-rendering", "crispEdges");
 
     // Axes
     svg.append("g")
         .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x).tickValues(x.domain().filter((d, i) => !(i % 5)))) // Show every 5th label
+        .call(d3.axisBottom(x).tickValues(x.domain().filter((d, i) => !(i % 5))))
         .attr("color", "#18ff62")
         .style("font-family", "VT323");
 
@@ -364,6 +390,8 @@ function drawEarningsChart(data) {
 
 function drawPayCycleGauge(progress) {
     const container = d3.select("#pay-cycle-gauge");
+    if (container.empty()) return;
+
     container.selectAll("*").remove();
 
     const width = 150;
